@@ -115,7 +115,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   var $=function(s,r){return (r||document).querySelector(s)};
   var view=$('#view'),navEl=$('#nav'),ovEl=$('#overlay'),langSel=$('#lang');
   var CFG={covers:'https://uploads.mangadex.org'};
-  var BASE=(window.QT_API_BASE||'/api').replace(/\/$/,'');
+  var BASE=(window.QT_API_BASE||'https://quyt-proxy.manhdungn111.workers.dev').replace(/\/$/,'');
   var RATING=['safe','suggestive'];
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
   function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
@@ -176,7 +176,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
     return '<button class="card" data-open="'+esc(m.id)+'"><div class="thumb">'+(u?'<img src="'+esc(u)+'" alt="'+esc(m.title)+'" loading="lazy" referrerpolicy="no-referrer">':'')+'</div><div class="t">'+esc(m.title)+'</div><div class="s">'+esc(m.authors.join(', '))+'</div></button>';
   }
   function skeleton(n){var o='';for(var i=0;i<n;i++)o+='<div class="sk"></div>';return '<div class="grid">'+o+'</div>'}
-  function credit(){return '<p class="credit">Dữ liệu và ảnh từ <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>. Quyền thuộc tác giả và nhóm dịch.</p>'}
+  function credit(){return '<p class="credit">Dữ liệu và ảnh từ <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>. Quyền thuộc tác giả và nhóm dịch. Bản 3.</p>'}
 
   /* ---------- views ---------- */
   var tab='home',token=0;
