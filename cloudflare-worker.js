@@ -29,6 +29,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
     const u = new URL(req.url);
+    if (u.pathname === '/ping') return json({ ok: true, v: 6, kv: !!(env && env.QT), img: true }, 200, cors);
     if (u.pathname.startsWith('/auth/') || u.pathname === '/sync') {
       return account(req, env, u, cors);
     }
@@ -54,7 +55,7 @@ export default {
 
     const r = await fetch(target, {
       headers: { 'User-Agent': UA, Accept: accept },
-      cf: { cacheTtl: ttl, cacheEverything: true },
+      cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': ttl, '300-599': 0 } },
     });
     const h = new Headers(r.headers);
     Object.entries(cors).forEach(([k, v]) => h.set(k, v));

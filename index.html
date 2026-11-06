@@ -80,6 +80,9 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
 .panel{background:var(--surface);border-radius:14px;padding:16px;margin-top:14px}
 .panel b{font-size:18px}
 .ok{color:var(--ok)}
+.bad{color:var(--err)}
+#diag div{margin:4px 0}
+.banner{background:var(--surface2);color:var(--fg);border-radius:12px;margin:8px 16px;padding:12px 14px;font-size:14px}
 .ov{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;overscroll-behavior:contain}
 .ovbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;background:var(--scrim);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .ovbar h2{margin:0;font-size:17px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -295,9 +298,17 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   }
   function directCover(m,size){return CFG.covers+'/covers/'+m.id+'/'+m.cover+'.'+(size||256)+'.jpg'}
   function coverUrl(m,size){if(!m.cover)return '';return VIA?BASE+'/covers/'+m.id+'/'+m.cover+'.'+(size||256)+'.jpg':directCover(m,size)}
-  function coverAlt(m,size){return VIA&&m.cover?directCover(m,size):''}
+  function wsrv(u,w){return 'https://wsrv.nl/?url='+encodeURIComponent(u)+(w?'&w='+w:'')}
+  function coverAlt(m,size){if(!m.cover)return '';var d=directCover(m,size);return (VIA?[d,wsrv(d,size)]:[wsrv(d,size)]).map(encodeURI).join(' ')}
+  function pageAlts(d){return (VIA?[d,wsrv(d)]:[wsrv(d)]).map(encodeURI).join(' ')}
   function pageUrl(d){return VIA?BASE+'/proxy?u='+encodeURIComponent(d):d}
-  document.addEventListener('error',function(e){var t=e.target;if(t&&t.tagName==='IMG'&&t.dataset.alt&&!t.dataset.tried){t.dataset.tried='1';t.src=t.dataset.alt}},true);
+  function showBanner(){var b=$('#rbanner');if(b)b.hidden=false}
+  document.addEventListener('error',function(e){
+    var t=e.target;if(!t||t.tagName!=='IMG')return;
+    var list=(t.dataset.alt||'').split(' ').filter(Boolean);
+    if(list.length){t.src=decodeURI(list.shift());t.dataset.alt=list.join(' ')}
+    else if(t.classList.contains('rimg'))showBanner();
+  },true);
   var STATUS={ongoing:'Đang ra',completed:'Hoàn thành',hiatus:'Tạm ngưng',cancelled:'Đã hủy'};
 
   /* ---------- thẻ truyện ---------- */
@@ -310,7 +321,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   }
   function fromItem(x){return {id:x.id,title:x.t||'Không có tên',cover:x.c,authors:x.au?[x.au]:[]}}
   function skeleton(n){var o='';for(var i=0;i<n;i++)o+='<div class="sk"></div>';return '<div class="grid">'+o+'</div>'}
-  function credit(){return '<p class="credit">Dữ liệu và ảnh từ <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>. Quyền thuộc tác giả và nhóm dịch. Bản 5.</p>'}
+  function credit(){return '<p class="credit">Dữ liệu và ảnh từ <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>. Quyền thuộc tác giả và nhóm dịch.</p>'}
 
   /* ---------- danh sách có phân trang ---------- */
   var pagers={};
@@ -460,10 +471,40 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
         +'<button class="btn pri" type="submit" id="aubtn">'+(reg?'Đăng ký':'Đăng nhập')+'</button></form>'
         +'<p class="note">Mật khẩu được mã hóa ngay trên máy bạn trước khi gửi đi, máy chủ không nhận mật khẩu gốc. Không có chức năng quên mật khẩu, mất mật khẩu là mất bản sao lưu. Khi đăng nhập, dữ liệu đang có trên máy được gộp vào tài khoản.</p>';
     }
-    o+='</section><section class="sec" style="padding-top:8px"><button class="themebtn" data-theme><span>Đổi giao diện sáng / tối</span><span>◐</span></button></section>'+credit();
+    o+='</section><section class="sec" style="padding-top:8px"><h3>Kiểm tra</h3><button class="themebtn" data-diag style="margin-top:0"><span>Kiểm tra kết nối ảnh và Worker</span><span>›</span></button><div id="diag" class="panel" hidden></div><button class="themebtn" data-theme><span>Đổi giao diện sáng / tối</span><span>◐</span></button></section>'+credit();
     view.innerHTML=o;
   }
 
+  function imgLoads(u){return new Promise(function(res){var i=new Image(),done=false;function fin(v){if(!done){done=true;clearTimeout(tm);res(v)}}var tm=setTimeout(function(){fin(false)},9000);i.onload=function(){fin(true)};i.onerror=function(){fin(false)};i.referrerPolicy='no-referrer';i.src=u})}
+  async function runDiag(){
+    var out=$('#diag');if(!out)return;
+    var rows=[];
+    function put(ok,txt){rows.push('<div class="'+(ok?'ok':'bad')+'">'+(ok?'✓ ':'✗ ')+esc(txt)+'</div>');out.innerHTML=rows.join('')}
+    out.innerHTML='Đang kiểm tra...';
+    if(!VIA)put(false,'Trang đang dùng máy chủ nội bộ, không có Cloudflare Worker.');
+    else{
+      try{
+        var r=await fetch(BASE+'/sync'),j=null;try{j=await r.json()}catch(e){}
+        if(j&&(j.error==='no_kv'||j.error==='unauthorized')){
+          put(true,'Worker đã là bản mới.');
+          put(j.error!=='no_kv','Kho KV (tên biến QT): '+(j.error==='no_kv'?'chưa gắn, tài khoản chưa dùng được':'đã gắn'));
+        }else put(false,'Worker vẫn là bản cũ (HTTP '+r.status+'). Dán lại mã cloudflare-worker.js mới vào Worker và bấm Deploy.');
+      }catch(e){put(false,'Không gọi được Worker: '+e.message)}
+    }
+    var m=null;
+    try{var j2=await api('/manga',{limit:1,includes:['cover_art'],contentRating:RATING,'order[followedCount]':'desc'});m=norm(j2.data[0]);put(true,'API MangaDex chạy được.')}
+    catch(e){put(false,'API MangaDex lỗi: '+e.message)}
+    if(!m||!m.cover){out.innerHTML=rows.join('');return}
+    var wOk=false;
+    if(VIA){
+      try{var r2=await fetch(coverUrl(m,256)),b=await r2.blob();wOk=r2.ok&&/^image\//.test(b.type);put(wOk,'Ảnh bìa qua Worker: HTTP '+r2.status+', '+(b.type||'không rõ loại')+', '+b.size+' byte')}
+      catch(e){put(false,'Ảnh bìa qua Worker lỗi: '+e.message)}
+    }
+    var dOk=await imgLoads(directCover(m,256));put(dOk,'Ảnh bìa tải thẳng từ MangaDex');
+    var sOk=await imgLoads(wsrv(directCover(m,256),256));put(sOk,'Ảnh bìa qua wsrv.nl (dự phòng)');
+    var s=wOk?'Ảnh sẽ tải qua Worker.':dOk?'Worker chưa lấy được ảnh nhưng máy bạn tải thẳng được. Trang sẽ tự dùng đường trực tiếp.':sOk?'Chỉ đường wsrv.nl chạy được. Trang sẽ dùng đường này.':'Cả ba đường đều lỗi. Có thể mạng đang chặn ảnh MangaDex. Thử đổi Wi-Fi sang 4G hoặc ngược lại, hoặc đổi DNS sang 1.1.1.1.';
+    rows.push('<div class="by" style="margin-top:10px">'+esc(s)+'</div>');out.innerHTML=rows.join('');
+  }
   var ROUTES={home:vHome,genres:vGenres,search:vSearch,library:vLibrary,me:vMe};
 
   /* ---------- trang truyện ---------- */
@@ -524,8 +565,8 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
       var p=progress[mid]||{read:{}};p.chapter=cid;p.read=p.read||{};p.read[cid]=1;progress[mid]=p;save('qt-prog',progress);
       addHist(c.m,cid,chLabel(ch));
       var prev=idx>0?c.chapters[idx-1]:null,next=idx<c.chapters.length-1?c.chapters[idx+1]:null;
-      var o='<div class="ov rd" id="rd" role="dialog">'+bar(c.m.title+' · '+chLabel(ch),'<button class="tg" data-saver aria-pressed="'+(!!saver)+'">Tiết kiệm dữ liệu</button>')+'<div class="pages">';
-      files.forEach(function(f,i){var d=at.baseUrl+'/'+mode+'/'+at.chapter.hash+'/'+f;o+='<img class="rimg" src="'+esc(pageUrl(d))+'" data-alt="'+(VIA?esc(d):'')+'" alt="Trang '+(i+1)+'" loading="lazy" referrerpolicy="no-referrer">'});
+      var o='<div class="ov rd" id="rd" role="dialog">'+bar(c.m.title+' · '+chLabel(ch),'<button class="tg" data-saver aria-pressed="'+(!!saver)+'">Tiết kiệm dữ liệu</button>')+'<div class="banner" id="rbanner" hidden>Ảnh chưa tải được. Vào tab Tôi, bấm Kiểm tra kết nối để biết lỗi ở đâu.</div><div class="pages">';
+      files.forEach(function(f,i){var d=at.baseUrl+'/'+mode+'/'+at.chapter.hash+'/'+f;o+='<img class="rimg" src="'+esc(pageUrl(d))+'" data-alt="'+esc(pageAlts(d))+'" alt="Trang '+(i+1)+'" loading="lazy" referrerpolicy="no-referrer">'});
       o+='</div><div class="rfoot g"><button class="btn" '+(prev?'data-read="'+esc(mid)+'|'+esc(prev.id)+'"':'disabled')+'>Chương trước</button><button class="btn pri" '+(next?'data-read="'+esc(mid)+'|'+esc(next.id)+'"':'disabled')+'>Chương sau</button></div></div>';
       ovEl.innerHTML=o;document.body.style.overflow='hidden';
     }catch(e){shell(bar('Lỗi')+'<div class="msg err g">'+esc(e.message)+'</div>')}
@@ -568,7 +609,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   }
 
   /* ---------- sự kiện ---------- */
-  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-theme]';
+  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
   document.addEventListener('click',function(e){
     var t=e.target.closest(SEL);
     if(!t||t.disabled)return;
@@ -592,6 +633,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
     if('authmode' in D){authMode=D.authmode;draw(true);return}
     if('logout' in D){logout();return}
     if('sync' in D){syncNow();return}
+    if('diag' in D){var dv=$('#diag');dv.hidden=false;runDiag();return}
     if('theme' in D){var r=document.documentElement,dark=getComputedStyle(r).colorScheme.indexOf('dark')>-1;r.setAttribute('data-theme',dark?'light':'dark')}
   });
   document.addEventListener('input',function(e){
