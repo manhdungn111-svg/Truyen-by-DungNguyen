@@ -765,6 +765,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     if(c==='quota')return 'Đã hết lượt AI miễn phí hôm nay. Lượt được làm mới lúc 7 giờ sáng (giờ Việt Nam).';
     if(c==='forbidden')return 'Worker từ chối vì địa chỉ trang không khớp ALLOWED_ORIGIN.';
     if(c==='bad_output')return 'AI trả về kết quả không đọc được, thử lại sau.';
+    if(st===405||st===404)return 'Worker vẫn là bản cũ nên chưa có chức năng dịch. Dán lại mã cloudflare-worker.js mới vào Worker, bấm Deploy rồi mở lại trang.';
     return 'Dịch AI lỗi (HTTP '+st+').';
   }
   function aiLoaded(img){return new Promise(function(res){if(img.complete&&img.naturalWidth)return res();var d=false;function f(){if(!d){d=true;res()}}img.addEventListener('load',f,{once:true});img.addEventListener('error',f,{once:true});setTimeout(f,15000)})}
