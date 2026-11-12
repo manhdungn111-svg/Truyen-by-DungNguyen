@@ -760,13 +760,13 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   /* ---------- dịch truyện bằng AI ---------- */
   var aiOn=load('qt-ai',false),aiCache=load('qt-tr',{}),aiSt=null,aiMin=false,aiFull=false;
   function aiSaveCache(){var ks=Object.keys(aiCache);if(ks.length>400)ks.slice(0,ks.length-400).forEach(function(k){delete aiCache[k]});save('qt-tr',aiCache)}
-  function aiErr(c,st){
+  function aiErr(c,st,d,f){
     if(c==='no_ai')return 'Worker chưa bật Workers AI. Vào Cloudflare, mở Worker, chọn Settings, Bindings, Add, Workers AI, đặt tên biến là AI rồi Deploy.';
     if(c==='quota')return 'Đã hết lượt AI miễn phí hôm nay. Lượt được làm mới lúc 7 giờ sáng (giờ Việt Nam).';
     if(c==='forbidden')return 'Worker từ chối vì địa chỉ trang không khớp ALLOWED_ORIGIN.';
     if(c==='bad_output')return 'AI trả về kết quả không đọc được, thử lại sau.';
     if(st===405||st===404)return 'Worker vẫn là bản cũ nên chưa có chức năng dịch. Dán lại mã cloudflare-worker.js mới vào Worker, bấm Deploy rồi mở lại trang.';
-    return 'Dịch AI lỗi (HTTP '+st+').';
+    return 'Dịch AI lỗi (HTTP '+st+')'+(d?': '+d:'')+(f?' | '+f:'')+'.';
   }
   function aiLoaded(img){return new Promise(function(res){if(img.complete&&img.naturalWidth)return res();var d=false;function f(){if(!d){d=true;res()}}img.addEventListener('load',f,{once:true});img.addEventListener('error',f,{once:true});setTimeout(f,15000)})}
   function aiShot(img){
@@ -782,7 +782,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   function aiCall(img){
     return aiShot(img).then(function(d){return fetch(BASE+'/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({img:d})})}).then(function(r){
       return r.json().catch(function(){return {}}).then(function(j){
-        if(!r.ok){var e=new Error(aiErr(j.error,r.status));e.fatal=(j.error==='no_ai'||j.error==='quota'||j.error==='forbidden');throw e}
+        if(!r.ok){var e=new Error(aiErr(j.error,r.status,j.detail,j.first));e.fatal=(j.error==='no_ai'||j.error==='quota'||j.error==='forbidden');throw e}
         return j.items||[];
       });
     });

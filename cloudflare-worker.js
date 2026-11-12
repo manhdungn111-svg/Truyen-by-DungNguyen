@@ -195,15 +195,33 @@ function parseItems(text) {
   } catch (e) { return null; }
 }
 
+function b64bytes(img) {
+  const bin = atob(img.slice(img.indexOf(',') + 1));
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return [...arr];
+}
+
 async function runModel(env, img) {
-  return env.AI.run(AI_MODEL, {
-    messages: [{ role: 'user', content: [
-      { type: 'text', text: AI_PROMPT },
-      { type: 'image_url', image_url: { url: img } },
-    ] }],
-    max_tokens: 1200,
-    temperature: 0.2,
-  });
+  try {
+    return await env.AI.run(AI_MODEL, {
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: AI_PROMPT },
+        { type: 'image_url', image_url: { url: img } },
+      ] }],
+      max_tokens: 1200,
+      temperature: 0.2,
+    });
+  } catch (e) {
+    if (/agree|license|5016|quota|neuron|4006|exceeded/i.test(String(e && e.message))) throw e;
+    // Định dạng cũ: prompt + mảng byte của ảnh.
+    try {
+      return await env.AI.run(AI_MODEL, { prompt: AI_PROMPT, image: b64bytes(img), max_tokens: 1200, temperature: 0.2 });
+    } catch (e2) {
+      e2.first = String((e && e.message) || e);
+      throw e2;
+    }
+  }
 }
 
 async function translate(req, env, cors) {
@@ -234,6 +252,6 @@ async function translate(req, env, cors) {
   } catch (e) {
     const m = String((e && e.message) || e);
     if (/quota|limit|neuron|4006|exceeded/i.test(m)) return json({ error: 'quota' }, 429, cors);
-    return json({ error: 'ai_failed' }, 502, cors);
+    return json({ error: 'ai_failed', detail: m.slice(0, 220), first: String((e && e.first) || '').slice(0, 220) }, 502, cors);
   }
 }
