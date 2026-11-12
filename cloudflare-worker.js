@@ -30,12 +30,13 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
     const u = new URL(req.url);
-    if (u.pathname === '/ping') return json({ ok: true, v: 7, kv: !!(env && env.QT), img: true, ai: !!(env && env.AI) }, 200, cors);
+    if (u.pathname === '/ping') return json({ ok: true, v: 8, kv: !!(env && env.QT), img: true, ai: !!(env && env.AI) }, 200, cors);
     if (u.pathname.startsWith('/auth/') || u.pathname === '/sync') {
       return account(req, env, u, cors);
     }
 
     if (u.pathname === '/translate' && req.method === 'POST') return translate(req, env, cors);
+    if (u.pathname === '/translate-text' && req.method === 'POST') return translateText(req, env, cors);
 
     if (req.method !== 'GET') return new Response('GET only', { status: 405, headers: cors });
 
@@ -245,6 +246,49 @@ async function translate(req, env, cors) {
     const items = parseItems(typeof raw === 'string' ? raw : JSON.stringify(raw));
     if (!items) return json({ error: 'bad_output' }, 502, cors);
     return json({ items }, 200, cors);
+  } catch (e) {
+    const m = String((e && e.message) || e);
+    if (/quota|limit|neuron|4006|exceeded/i.test(m)) return json({ error: 'quota' }, 429, cors);
+    return json({ error: 'ai_failed', detail: m.slice(0, 220) }, 502, cors);
+  }
+}
+
+/* ---------- dịch văn bản (dùng cho chữ đã nhận dạng trong ảnh) ---------- */
+const TXT_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const LANG_NAME = { en: 'English', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', 'zh-hk': 'Chinese', es: 'Spanish', fr: 'French', de: 'German', 'pt-br': 'Portuguese', pt: 'Portuguese', id: 'Indonesian', ru: 'Russian', it: 'Italian', tr: 'Turkish', pl: 'Polish' };
+
+async function translateText(req, env, cors) {
+  if (!env.AI) return json({ error: 'no_ai' }, 503, cors);
+  if (req.headers.get('Origin') !== ALLOWED_ORIGIN) return json({ error: 'forbidden' }, 403, cors);
+  let texts, from;
+  try {
+    const b = JSON.parse(await readBody(req, 60000));
+    texts = Array.isArray(b.texts) ? b.texts.slice(0, 40).map((t) => String(t).replace(/\s+/g, ' ').trim().slice(0, 300)) : [];
+    from = LANG_NAME[String(b.from || 'en')] || 'English';
+  } catch (e) {
+    return json({ error: e && e.message === 'too_big' ? 'too_big' : 'bad_request' }, e && e.message === 'too_big' ? 413 : 400, cors);
+  }
+  if (!texts.length) return json({ items: [] }, 200, cors);
+  const prompt =
+    'Translate each numbered line of this comic dialogue from ' + from + ' into natural, concise Vietnamese that sounds like a real character speaking. ' +
+    'Keep the same numbering. Output ONLY lines in the format N|translation, one per input line, with no explanation.\n\n' +
+    texts.map((t, i) => (i + 1) + '|' + t).join('\n');
+  try {
+    const r = await env.AI.run(TXT_MODEL, {
+      messages: [
+        { role: 'system', content: 'You are a professional comic translator into Vietnamese.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 1800,
+      temperature: 0.3,
+    });
+    const raw = typeof r === 'string' ? r : (r && (r.response || (r.result && r.result.response))) || '';
+    const out = texts.map(() => '');
+    for (const line of String(raw).split(/\n+/)) {
+      const m = /^\s*(\d{1,2})\s*[|.:)\-]\s*(.+?)\s*$/.exec(line);
+      if (m) { const i = Number(m[1]) - 1; if (i >= 0 && i < out.length && !out[i]) out[i] = m[2].slice(0, 400); }
+    }
+    return json({ items: out }, 200, cors);
   } catch (e) {
     const m = String((e && e.message) || e);
     if (/quota|limit|neuron|4006|exceeded/i.test(m)) return json({ error: 'quota' }, 429, cors);

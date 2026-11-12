@@ -696,7 +696,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     while(off<total&&guard++<12){
       var j=await api('/manga/'+id+'/feed',{translatedLanguage:[lang],'order[volume]':'asc','order[chapter]':'asc',limit:500,offset:off,includeExternalUrl:'0',contentRating:RATING.concat(['erotica'])});
       total=j.total||0;
-      (j.data||[]).forEach(function(c){var a=c.attributes||{};if(a.pages>0)out.push({id:c.id,chapter:a.chapter,volume:a.volume,title:a.title,pages:a.pages})});
+      (j.data||[]).forEach(function(c){var a=c.attributes||{};if(a.pages>0)out.push({id:c.id,chapter:a.chapter,volume:a.volume,title:a.title,pages:a.pages,lang:a.translatedLanguage})});
       off+=500;
     }
     var seen={},res=[];
@@ -752,45 +752,147 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
       var nb=function(x,cls,lab){return '<button class="ib '+cls+'" aria-label="'+lab+'" '+(x?'data-read="'+esc(mid)+'|'+esc(x.id)+'"':'disabled')+'>'+ic('back')+'</button>'};
       o=o.replace(/<\/div><\/div>$/,'</div><div class="rbot">'+'<button class="ib" data-back aria-label="Quay lại">'+ic('close')+'</button>'+nb(prev,'pv','Chương trước')+'<div class="mid"><b>'+esc(chLabel(ch))+'</b><small>'+esc(c.m.title)+'</small></div>'+nb(next,'nx','Chương sau')+'<button class="ib ai" data-ai aria-pressed="'+aiOn+'" aria-label="Dịch AI sang tiếng Việt">Dịch</button><button class="ib" data-saver aria-pressed="'+(!!saver)+'" aria-label="Tiết kiệm dữ liệu">'+ic('saver')+'</button></div>'+nb(prev,'pv rarrow','Chương trước').replace('class="ib ','class="')+nb(next,'nx rarrow','Chương sau').replace('class="ib ','class="')+'</div>');
       o=o.replace(/<\/div>$/,'<div class="aisheet" id="aisheet" hidden></div></div>');
-      ovEl.innerHTML=o;document.body.style.overflow='hidden';aiStart(cid);
+      ovEl.innerHTML=o;document.body.style.overflow='hidden';aiStart(cid,ch.lang);
     }catch(e){shell(bar('Lỗi')+'<div class="msg err g">'+esc(e.message)+'</div>')}
   }
 
 
-  /* ---------- dịch truyện bằng AI ---------- */
-  var aiOn=load('qt-ai',false),aiCache=load('qt-tr',{}),aiSt=null,aiMin=false,aiFull=false;
-  function aiSaveCache(){var ks=Object.keys(aiCache);if(ks.length>400)ks.slice(0,ks.length-400).forEach(function(k){delete aiCache[k]});save('qt-tr',aiCache)}
-  function aiErr(c,st,d,f){
+  /* ---------- dịch truyện bằng AI: nhận dạng chữ, dịch, rồi vẽ chữ Việt vào ảnh ---------- */
+  var aiOn=load('qt-ai',false),aiCache=load('qt-tr2',{}),aiSt=null,aiMin=false,aiFull=false,aiOrig=false;
+  var OCR_LANG={en:'eng',ja:'jpn',ko:'kor',zh:'chi_sim','zh-hk':'chi_tra',es:'spa',fr:'fra',de:'deu','pt-br':'por',pt:'por',id:'ind',ru:'rus',it:'ita',tr:'tur',pl:'pol'};
+  function aiSaveCache(){var ks=Object.keys(aiCache);if(ks.length>300)ks.slice(0,ks.length-300).forEach(function(k){delete aiCache[k]});save('qt-tr2',aiCache)}
+  function aiErr(c,st,d){
     if(c==='no_ai')return 'Worker chưa bật Workers AI. Vào Cloudflare, mở Worker, chọn Settings, Bindings, Add, Workers AI, đặt tên biến là AI rồi Deploy.';
     if(c==='quota')return 'Đã hết lượt AI miễn phí hôm nay. Lượt được làm mới lúc 7 giờ sáng (giờ Việt Nam).';
     if(c==='forbidden')return 'Worker từ chối vì địa chỉ trang không khớp ALLOWED_ORIGIN.';
-    if(c==='bad_output')return 'AI trả về kết quả không đọc được, thử lại sau.';
-    if(st===405||st===404)return 'Worker vẫn là bản cũ nên chưa có chức năng dịch. Dán lại mã cloudflare-worker.js mới vào Worker, bấm Deploy rồi mở lại trang.';
-    return 'Dịch AI lỗi (HTTP '+st+')'+(d?': '+d:'')+(f?' | '+f:'')+'.';
+    if(st===405||st===404)return 'Worker vẫn là bản cũ nên chưa có chức năng dịch. Cập nhật Worker rồi mở lại trang.';
+    return 'Dịch AI lỗi (HTTP '+st+')'+(d?': '+d:'')+'.';
   }
   function aiLoaded(img){return new Promise(function(res){if(img.complete&&img.naturalWidth)return res();var d=false;function f(){if(!d){d=true;res()}}img.addEventListener('load',f,{once:true});img.addEventListener('error',f,{once:true});setTimeout(f,15000)})}
-  function aiShot(img){
-    return fetch(img.currentSrc||img.src).then(function(r){if(!r.ok)throw new Error('Không tải được ảnh trang ('+r.status+')');return r.blob()}).then(function(b){
-      return new Promise(function(res,rej){var u=URL.createObjectURL(b),im=new Image();im.onload=function(){URL.revokeObjectURL(u);res(im)};im.onerror=function(){URL.revokeObjectURL(u);rej(new Error('Không đọc được ảnh trang'))};im.src=u})
-    }).then(function(im){
-      var w=im.naturalWidth||400,h=im.naturalHeight||560,s=Math.min(1,1100/Math.max(w,h)),c=document.createElement('canvas');
-      c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
-      var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
-      return c.toDataURL('image/jpeg',0.68);
+  /* nhận dạng chữ (Tesseract chạy ngay trong máy) */
+  var ocrLib=null,ocrW={};
+  function ocrLoad(){
+    if(window.Tesseract)return Promise.resolve();
+    if(ocrLib)return ocrLib;
+    ocrLib=new Promise(function(res,rej){var s=document.createElement('script');s.src=(window.QT_OCR&&window.QT_OCR.lib)||'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=res;s.onerror=function(){ocrLib=null;rej(new Error('Không tải được bộ nhận dạng chữ. Kiểm tra mạng rồi thử lại.'))};document.head.appendChild(s)});
+    return ocrLib;
+  }
+  function ocrWorker(lang){
+    if(ocrW[lang])return ocrW[lang];
+    ocrW[lang]=ocrLoad().then(function(){return window.Tesseract.createWorker(lang,1,(window.QT_OCR&&window.QT_OCR.opts)||{})}).catch(function(e){delete ocrW[lang];throw e});
+    return ocrW[lang];
+  }
+  function ocrPage(canvas,lang){
+    if(window.QT_OCR_MOCK)return Promise.resolve(window.QT_OCR_MOCK(canvas));
+    return ocrWorker(lang).then(function(w){return w.recognize(canvas)}).then(function(r){
+      return (r.data.paragraphs||[]).map(function(p){return {t:p.text,c:p.confidence,b:[p.bbox.x0,p.bbox.y0,p.bbox.x1,p.bbox.y1]}});
     });
   }
-  function aiCall(img){
-    return aiShot(img).then(function(d){return fetch(BASE+'/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({img:d})}).catch(function(e){throw new Error('Không gửi được ảnh tới Worker ('+(e&&e.message||'mất kết nối')+'). Có thể mạng chập chờn hoặc Worker quá tải.')})}).then(function(r){
+  function aiBase(img){
+    if(!img.dataset.orig)img.dataset.orig=img.currentSrc||img.src;
+    return fetch(img.dataset.orig).then(function(r){if(!r.ok)throw new Error('Không tải được ảnh trang ('+r.status+')');return r.blob()}).then(function(b){
+      return new Promise(function(res,rej){var u=URL.createObjectURL(b),im=new Image();im.onload=function(){URL.revokeObjectURL(u);res(im)};im.onerror=function(){URL.revokeObjectURL(u);rej(new Error('Không đọc được ảnh trang'))};im.src=u})
+    }).then(function(im){
+      var w=im.naturalWidth||400,h=im.naturalHeight||560,k=Math.min(1,1600/w),c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(w*k));c.height=Math.max(1,Math.round(h*k));
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c;
+    });
+  }
+  function ringColor(ctx,b,W,H){
+    var x0=Math.max(0,b[0]-4),y0=Math.max(0,b[1]-4),x1=Math.min(W,b[2]+4),y1=Math.min(H,b[3]+4),r=0,g=0,bl=0,n=0;
+    [[x0,y0,x1-x0,2],[x0,y1-2,x1-x0,2],[x0,y0,2,y1-y0],[x1-2,y0,2,y1-y0]].forEach(function(q){
+      if(q[2]<1||q[3]<1)return;
+      var d=ctx.getImageData(q[0],q[1],q[2],q[3]).data;
+      for(var i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];bl+=d[i+2];n++}
+    });
+    if(!n)return {bg:'#ffffff',fg:'#111111'};
+    r=Math.round(r/n);g=Math.round(g/n);bl=Math.round(bl/n);
+    var lum=(0.299*r+0.587*g+0.114*bl)/255;
+    return {bg:'rgb('+r+','+g+','+bl+')',fg:lum>0.55?'#111111':'#ffffff'};
+  }
+  function aiTranslateTexts(texts,from){
+    return fetch(BASE+'/translate-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texts:texts,from:from})}).catch(function(e){throw new Error('Không kết nối được Worker ('+(e&&e.message||'mất kết nối')+').')}).then(function(r){
       return r.json().catch(function(){return {}}).then(function(j){
-        if(!r.ok){var e=new Error(aiErr(j.error,r.status,j.detail,j.first));e.fatal=(j.error==='no_ai'||j.error==='quota'||j.error==='forbidden');throw e}
+        if(!r.ok){var e=new Error(aiErr(j.error,r.status,j.detail));e.fatal=(j.error==='no_ai'||j.error==='quota'||j.error==='forbidden'||r.status===404||r.status===405);throw e}
         return j.items||[];
       });
     });
   }
-  function aiStart(cid){
+  function aiExtract(base,src){
+    var W=base.width,H=base.height,ctx=base.getContext('2d');
+    return ocrPage(base,OCR_LANG[src]||'eng').then(function(ps){
+      var L=[];
+      (ps||[]).forEach(function(p){
+        var t=String(p.t||'').replace(/\s+/g,' ').trim(),b=p.b;
+        if(!b||p.c<45||(b[2]-b[0])<16||(b[3]-b[1])<10)return;
+        var letters=(t.match(/[\p{L}]/gu)||[]).length;
+        if(letters<3||letters/Math.max(1,t.length)<0.5)return;
+        var col=ringColor(ctx,b,W,H);
+        L.push({s:t.slice(0,300),b:b.map(Math.round),bg:col.bg,fg:col.fg});
+      });
+      if(!L.length)return [];
+      return aiTranslateTexts(L.map(function(x){return x.s}),src).then(function(vs){
+        var out=[];
+        L.forEach(function(x,i){var v=String(vs[i]||'').trim();if(v){x.v=v.slice(0,400);out.push(x)}});
+        return out;
+      });
+    });
+  }
+  function wrapText(ctx,text,maxW){
+    var words=text.split(' '),lines=[],cur='';
+    words.forEach(function(w){var t=cur?cur+' '+w:w;if(cur&&ctx.measureText(t).width>maxW){lines.push(cur);cur=w}else cur=t});
+    if(cur)lines.push(cur);return lines;
+  }
+  function bake(base,items){
+    var c=document.createElement('canvas');c.width=base.width;c.height=base.height;
+    var ctx=c.getContext('2d');ctx.drawImage(base,0,0);
+    var FONT='"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif';
+    items.forEach(function(it){
+      var b=it.b,bw=b[2]-b[0],bh=b[3]-b[1],pad=Math.max(3,Math.round(bh*0.05));
+      var x=b[0]-pad,y=b[1]-pad,w=bw+2*pad,h=bh+2*pad;
+      var size=Math.min(Math.round(h*0.45),44),lines,lh;
+      for(;size>=10;size--){
+        ctx.font='600 '+size+'px '+FONT;lines=wrapText(ctx,it.v,w-8);lh=Math.round(size*1.18);
+        if(lines.length*lh<=h-4&&lines.every(function(l){return ctx.measureText(l).width<=w-6}))break;
+      }
+      if(size<10){size=10;ctx.font='600 10px '+FONT;lines=wrapText(ctx,it.v,w-8);lh=12}
+      var need=lines.length*lh+6;if(need>h){y-=Math.round((need-h)/2);h=need}
+      ctx.fillStyle=it.bg;ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(x,y,w,h,Math.min(14,h/4));else ctx.rect(x,y,w,h);
+      ctx.fill();
+      ctx.fillStyle=it.fg;ctx.textAlign='center';ctx.textBaseline='middle';
+      var top=y+h/2-(lines.length*lh)/2+lh/2;
+      lines.forEach(function(l,i){ctx.fillText(l,x+w/2,top+i*lh)});
+    });
+    return new Promise(function(res){c.toBlob(function(b){res(b)},'image/jpeg',0.86)});
+  }
+  function aiShow(img,blob){
+    var u=URL.createObjectURL(blob);
+    if(img.dataset.tr)try{URL.revokeObjectURL(img.dataset.tr)}catch(e){}
+    img.dataset.tr=u;img.dataset.alt='';
+    img.src=aiOrig?img.dataset.orig:u;
+  }
+  function aiToggleOrig(){
+    aiOrig=!aiOrig;
+    document.querySelectorAll('#rd .rimg').forEach(function(im){if(im.dataset.tr)im.src=aiOrig?im.dataset.orig:im.dataset.tr});
+    aiRender();
+  }
+  function aiPage(st,i){
+    var img=st.imgs[i],key=st.cid+':'+i;
+    return aiBase(img).then(function(base){
+      var cached=aiCache[key];
+      var p=cached?Promise.resolve(cached):aiExtract(base,st.src).then(function(items){aiCache[key]=items;aiSaveCache();return items});
+      return p.then(function(items){
+        if(!items.length)return;
+        return bake(base,items).then(function(b){if(aiSt===st)aiShow(img,b)});
+      });
+    });
+  }
+  function aiStart(cid,src){
     if(aiSt&&aiSt.io)aiSt.io.disconnect();
     var imgs=[].slice.call(document.querySelectorAll('#rd .rimg'));
-    aiSt={cid:cid,imgs:imgs,vis:{},busy:0,pending:{},fail:{},tries:{},hold:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',io:null};
+    aiSt={cid:cid,src:src||'en',imgs:imgs,vis:{},busy:0,pending:{},baked:{},fail:{},tries:{},hold:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',note:'',io:null};
+    if(aiSt.src==='vi')aiSt.note='Chương này đã là tiếng Việt, không cần dịch.';
     if('IntersectionObserver' in window){
       var st=aiSt;
       st.io=new IntersectionObserver(function(es){es.forEach(function(e){var i=imgs.indexOf(e.target);if(e.isIntersecting)st.vis[i]=1;else delete st.vis[i]});aiRender();aiPump()},{root:$('#rd'),threshold:0.5});
@@ -798,36 +900,37 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     }
     aiRender();aiPump();
   }
-  function aiDone(st){var n=0;st.imgs.forEach(function(x,i){if(aiCache[st.cid+':'+i])n++});return n}
+  function aiDone(st){var n=0;st.imgs.forEach(function(x,i){if(st.baked[i])n++});return n}
   function aiRender(){
     var el=$('#aisheet');if(!el)return;
     if(!aiOn||!aiSt){el.hidden=true;return}
     var st=aiSt,N=st.imgs.length,done=aiDone(st),idx=Object.keys(st.vis).map(Number).sort(function(a,b){return a-b});
     if(aiFull){idx=[];for(var q=0;q<N;q++)idx.push(q)}else if(!idx.length)idx=[0];
-    var o='<button class="aihd" data-aimin><span>Bản dịch AI · '+(aiFull?'Cả chương':'Trang '+idx.map(function(i){return i+1}).join(', '))+'</span><span>Đã dịch '+done+'/'+N+' · '+(aiMin?'Mở ▴':'Thu ▾')+'</span></button><div class="abody">';
-    o+='<div class="aibar"><div class="aipg"><i style="width:'+(N?Math.round(done*100/N):0)+'%"></i></div><button class="aitg" data-aifull>'+(aiFull?'Chỉ trang đang xem':'Xem cả chương')+'</button></div>';
+    var o='<button class="aihd" data-aimin><span>Dịch AI · '+(aiFull?'Cả chương':'Trang '+idx.map(function(i){return i+1}).join(', '))+'</span><span>Đã dịch '+done+'/'+N+' · '+(aiMin?'Mở ▴':'Thu ▾')+'</span></button><div class="abody">';
+    o+='<div class="aibar"><div class="aipg"><i style="width:'+(N?Math.round(done*100/N):0)+'%"></i></div><button class="aitg" data-aiorig>'+(aiOrig?'Xem ảnh dịch':'Xem ảnh gốc')+'</button><button class="aitg" data-aifull>'+(aiFull?'Chỉ trang này':'Cả chương')+'</button></div>';
     if(st.err)o+='<p class="er">'+esc(st.err)+'</p>';
+    else if(st.note)o+='<p><span class="s">'+esc(st.note)+'</span></p>';
     else idx.forEach(function(i){
       var k=st.cid+':'+i,it=aiCache[k];
       if(idx.length>1)o+='<div class="pn">Trang '+(i+1)+'</div>';
-      if(it){o+=it.length?it.map(function(x){return '<p>'+esc(x.v)+(x.s?'<span class="s">'+esc(x.s)+'</span>':'')+'</p>'}).join(''):'<p><span class="s">Trang này không có chữ.</span></p>'}
+      if(it&&st.baked[i]){o+=it.length?it.map(function(x){return '<p>'+esc(x.v)+(x.s?'<span class="s">'+esc(x.s)+'</span>':'')+'</p>'}).join(''):'<p><span class="s">Không thấy chữ để dịch ở trang này.</span></p>'}
       else if(st.fail[i])o+='<p class="er">'+esc(st.fail[i])+' <button class="aitg" data-airetry>Thử lại</button></p>';
-      else o+='<p><span class="s">'+(st.pending[i]?'Đang dịch...':'Đang chờ đến lượt...')+'</span></p>';
+      else o+='<p><span class="s">'+(st.pending[i]?'Đang nhận dạng và dịch...':'Đang chờ đến lượt...')+'</span></p>';
     });
     el.innerHTML=o+'</div>';el.classList.toggle('min',aiMin);el.classList.toggle('full',aiFull);el.hidden=false;
   }
   function aiPump(){
-    var st=aiSt;if(!aiOn||!st||st.err)return;
+    var st=aiSt;if(!aiOn||!st||st.err||st.note)return;
     var N=st.imgs.length;if(!N||!document.body.contains(st.imgs[0]))return;
     var ks=Object.keys(st.vis).map(Number),start=ks.length?Math.min.apply(null,ks):0;
-    while(st.busy<2){
+    while(st.busy<1){
       var pick=-1;
-      for(var k=0;k<N;k++){var i=(start+k)%N,key=st.cid+':'+i;if(!aiCache[key]&&!st.fail[i]&&!st.pending[i]&&!st.hold[i]){pick=i;break}}
+      for(var k=0;k<N;k++){var i=(start+k)%N;if(!st.baked[i]&&!st.fail[i]&&!st.pending[i]&&!st.hold[i]){pick=i;break}}
       if(pick<0)break;
       st.busy++;st.pending[pick]=1;
-      (function(i,key){
-        aiLoaded(st.imgs[i]).then(function(){return aiCall(st.imgs[i])}).then(function(items){aiCache[key]=items.slice(0,40);aiSaveCache()}).catch(function(e){if(e.fatal)st.err=e.message;else{st.tries[i]=(st.tries[i]||0)+1;if(st.tries[i]>=3)st.fail[i]=e.message||'Dịch AI lỗi';else{st.hold[i]=1;setTimeout(function(){delete st.hold[i];if(aiSt===st)aiPump()},3000)}}}).then(function(){delete st.pending[i];st.busy--;if(aiSt!==st)return;aiRender();aiPump()});
-      })(pick,st.cid+':'+pick);
+      (function(i){
+        aiLoaded(st.imgs[i]).then(function(){return aiPage(st,i)}).then(function(){st.baked[i]=1}).catch(function(e){if(e.fatal)st.err=e.message;else{st.tries[i]=(st.tries[i]||0)+1;if(st.tries[i]>=3)st.fail[i]=e.message||'Dịch AI lỗi';else{st.hold[i]=1;setTimeout(function(){delete st.hold[i];if(aiSt===st)aiPump()},3000)}}}).then(function(){delete st.pending[i];st.busy--;if(aiSt!==st)return;aiRender();aiPump()});
+      })(pick);
     }
     aiRender();
   }
@@ -869,7 +972,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- sự kiện ---------- */
-  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-ai],[data-airetry],[data-aimin],[data-aifull],[data-spread],[data-rtl],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
+  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-ai],[data-aiorig],[data-airetry],[data-aimin],[data-aifull],[data-spread],[data-rtl],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
   document.addEventListener('click',function(e){
     var t=e.target.closest(SEL);
     if(!t||t.disabled)return;
@@ -881,7 +984,8 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     if('pmore' in D){pagers[D.pmore]&&pagers[D.pmore].run(false);return}
     if('retry' in D){draw(true);return}
     if('desc' in D){var ds=$('#desc');ds.classList.toggle('open');t.textContent=ds.classList.contains('open')?'Thu gọn':'Xem thêm';return}
-    if('ai' in D){aiOn=!aiOn;save('qt-ai',aiOn);if(aiSt){aiSt.err=VIA?'':aiSt.err;aiSt.fail={};if(aiSt.err&&VIA)aiSt.err=''}document.querySelectorAll('[data-ai]').forEach(function(b){b.setAttribute('aria-pressed',aiOn)});aiRender();aiPump();return}
+    if('ai' in D){aiOn=!aiOn;save('qt-ai',aiOn);if(aiSt){aiSt.err=VIA?'':aiSt.err;aiSt.fail={};if(aiSt.err&&VIA)aiSt.err=''}document.querySelectorAll('[data-ai]').forEach(function(b){b.setAttribute('aria-pressed',aiOn)});document.querySelectorAll('#rd .rimg').forEach(function(im){if(im.dataset.tr)im.src=(aiOn&&!aiOrig)?im.dataset.tr:im.dataset.orig});aiRender();aiPump();return}
+    if('aiorig' in D){aiToggleOrig();return}
     if('airetry' in D){if(aiSt){aiSt.fail={};aiSt.tries={};aiSt.hold={};aiRender();aiPump()}return}
     if('aifull' in D){aiFull=!aiFull;aiMin=false;aiRender();return}
     if('aimin' in D){aiMin=!aiMin;aiRender();return}
