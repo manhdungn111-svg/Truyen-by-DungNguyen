@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Quýt Truyện</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quýt Truyện">
+<meta name="theme-color" content="#ff5a1f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
@@ -120,6 +127,175 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
 .rfoot .btn{background:rgba(255,255,255,.12);color:#fff}.rfoot .btn.pri{background:var(--accent)}
 .tg{font-size:13px;font-weight:600;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;white-space:nowrap}
 .tg[aria-pressed="true"]{background:var(--accent)}
+
+/* thanh dưới bo tròn kiểu iPhone */
+.nav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));padding:6px 6px;border:1px solid var(--line);border-radius:28px;background:color-mix(in srgb,var(--surface) 82%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.nav button{border-radius:22px}
+.nav button[aria-current="page"]{background:var(--surface2)}
+main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+
+/* ---------- máy tính bảng (iPad) ---------- */
+@media (min-width:768px){
+  body{font-size:16px}
+  main{max-width:1240px}
+  .g{padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+  .brand{padding-block:18px 14px}
+  .brand svg{width:40px;height:40px}
+  .brand b{font-size:28px}
+  .grid{gap:26px 18px}
+  .card .t{font-size:16px}
+  .card .s{font-size:14px}
+  .sec h3{font-size:26px}
+  .sbar input{height:52px}
+  .sel,.lang{font-size:15px;padding:10px 16px}
+  .chip{font-size:14.5px;padding:8px 16px}
+  .tile{font-size:19px;padding:16px}
+  .list{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .hmain{grid-template-columns:76px minmax(0,1fr)}
+  .nav{left:auto;right:max(14px,env(safe-area-inset-right,0px));top:calc(50vh - 202px);top:calc(50svh - 202px);bottom:auto;transform:translateZ(0);width:88px;grid-template-columns:1fr;gap:6px;padding:10px 6px;border-radius:30px}
+  .nav button{font-size:12px;padding:12px 0}
+  .nav svg{width:27px;height:27px}
+  main{width:calc(100% - 112px);margin-inline:0 auto;padding-bottom:calc(48px + env(safe-area-inset-bottom,0px))}
+  .ov>.g{max-width:1240px;margin-inline:auto}
+  .ovbar.g{padding-inline:max(28px,calc((100% - 1184px)/2))}
+  .ovbar h2{font-size:19px}
+  .ib{width:44px;height:44px}
+  .dhead{grid-template-columns:220px minmax(0,1fr);gap:28px;padding-top:18px}
+  .dhead h1{font-size:34px}
+  .by{font-size:16px}
+  .tags span{font-size:13.5px;padding:4px 12px}
+  .btns{max-width:460px}
+  .desc{font-size:16px;-webkit-line-clamp:8;max-width:80ch}
+  .chl{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .ch{padding:15px 16px}
+  .pages,.rfoot{max-width:860px}
+  .form{max-width:520px}
+  .panel{max-width:640px}
+  .themebtn{max-width:640px}
+  .note{max-width:70ch}
+  .banner{max-width:860px;margin-inline:auto}
+}
+@media (min-width:1000px){
+  .grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .tiles{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .list{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .chl{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (hover:hover){
+  .card:hover .thumb img,.tile:hover{filter:brightness(1.08)}
+  .ch:hover,.hrow:hover{background:var(--surface2)}
+}
+
+/* đọc 2 trang / khung (iPad) */
+.padonly{display:none}
+@media (min-width:768px){
+  .padonly{display:inline-block}
+  .rd .ovbar{flex-wrap:wrap}
+  .rd{scroll-snap-type:y proximity;scroll-padding-top:calc(64px + env(safe-area-inset-top,0px))}
+  .pages.two{max-width:none;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding-inline:max(0px,env(safe-area-inset-left,0px))}
+  .pages.two.rtl{direction:rtl}
+  .pages.two .rimg{margin:0;height:calc(100vh - 72px - env(safe-area-inset-top,0px));height:calc(100dvh - 72px - env(safe-area-inset-top,0px));min-height:0;object-fit:contain;background:#09090a;scroll-snap-align:start}
+  .pages.two .rimg.span{grid-column:1/-1}
+  .pages.two .rimg.long{grid-column:1/-1;height:auto;width:100%;max-width:860px;margin-inline:auto;object-fit:initial}
+}
+
+/* thanh điều khiển dưới cùng của trình đọc (điện thoại) */
+.rbot{display:none}
+@media (max-width:767px){
+  .rd .ovbar{display:none}
+  .rd{padding-top:env(safe-area-inset-top,0px)}
+  .rbot{display:flex;align-items:center;gap:8px;position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:45;padding:6px;border-radius:28px;background:rgba(28,28,32,.82);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 28px rgba(0,0,0,.45);color:#fff}
+  .rbot .ib{background:rgba(255,255,255,.12);width:46px;height:46px}
+  .rbot .ib[disabled]{opacity:.3}
+  .rbot .nx svg{transform:rotate(180deg)}
+  .rbot .mid{flex:1;min-width:0;text-align:center;line-height:1.25}
+  .rbot .mid b{display:block;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rbot .mid small{display:block;font-size:11.5px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rbot .ib[aria-pressed="true"]{background:var(--accent)}
+  .rd .rfoot{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+}
+
+/* iPad: 2 trang vừa trọn màn hình, mũi tên chuyển chương hai bên */
+.rarrow{display:none}
+@media (min-width:768px){
+  .rd .ovbar{position:fixed;top:0;left:0;right:0;z-index:46;background:linear-gradient(rgba(9,9,10,.88),rgba(9,9,10,0));-webkit-backdrop-filter:none;backdrop-filter:none;transition:opacity .2s}
+  .rd{scroll-padding-top:0}
+  .pages.two .rimg{height:100vh;height:100dvh}
+  .pages:not(.two){padding-top:68px}
+  .rd.noui .ovbar,.rd.noui .rarrow{opacity:0;pointer-events:none}
+  .rarrow{display:grid;place-items:center;position:fixed;top:50%;transform:translateY(-50%);z-index:46;width:58px;height:58px;border-radius:50%;color:#fff;background:rgba(28,28,32,.72);border:1px solid rgba(255,255,255,.12);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 6px 22px rgba(0,0,0,.45);transition:opacity .2s}
+  .rarrow svg{width:28px;height:28px}
+  .rarrow[disabled]{opacity:.25}
+  .rarrow.pv{left:max(14px,env(safe-area-inset-left,0px))}
+  .rarrow.nx{right:max(14px,env(safe-area-inset-right,0px))}
+  .rarrow.nx svg{transform:rotate(180deg)}
+  #rd.rtl .rarrow.pv{left:auto;right:max(14px,env(safe-area-inset-right,0px))}
+  #rd.rtl .rarrow.nx{right:auto;left:max(14px,env(safe-area-inset-left,0px))}
+  #rd.rtl .rarrow.pv svg{transform:rotate(180deg)}
+  #rd.rtl .rarrow.nx svg{transform:none}
+}
+
+.rd.noui .rbot{opacity:0;pointer-events:none;transform:translateY(24px)}
+.rbot{transition:opacity .2s,transform .2s}
+
+/* iPad xoay dọc: thanh điều hướng xuống giữa phía dưới */
+@media (min-width:768px) and (orientation:portrait){
+  .nav{left:50%;right:auto;top:auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(640px,calc(100% - 48px));grid-template-columns:repeat(5,1fr);gap:0;padding:8px;border-radius:28px}
+  .nav button{padding:8px 0;font-size:12.5px}
+  main{width:100%;margin-inline:auto;padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+}
+
+/* thanh điều hướng giữ nguyên một chỗ, hiện ở mọi mục trừ trình đọc */
+.nav{z-index:45}
+.ov.rd{z-index:60}
+.ov:not(.rd){padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+@media (min-width:768px) and (orientation:portrait){.ov:not(.rd){padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}}
+@media (min-width:768px) and (orientation:landscape){.ov:not(.rd){padding-right:112px;padding-bottom:0}}
+
+/* iPad ngang: thanh bên nhỏ gọn, chỉ có biểu tượng */
+@media (min-width:768px) and (orientation:landscape){
+  .nav{top:calc(50vh - 131px);top:calc(50svh - 131px);width:60px;padding:8px;gap:6px;border-radius:30px;box-shadow:0 6px 24px rgba(0,0,0,.28)}
+  .nav button{width:44px;height:44px;padding:0;border-radius:50%;justify-content:center;margin:0 auto}
+  .nav button span{display:none}
+  .nav svg{width:24px;height:24px}
+  .nav button[aria-current="page"]{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent)}
+  main{width:calc(100% - 92px)}
+  .ov:not(.rd){padding-right:92px}
+}
+
+/* iPad dọc: thanh dưới nhỏ gọn, chỉ có biểu tượng */
+@media (min-width:768px) and (orientation:portrait){
+  .nav{width:auto;grid-template-columns:repeat(5,44px);gap:6px;padding:8px;border-radius:30px;bottom:calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 6px 24px rgba(0,0,0,.28)}
+  .nav button{width:44px;height:44px;padding:0;border-radius:50%;justify-content:center}
+  .nav button span{display:none}
+  .nav svg{width:24px;height:24px}
+  .nav button[aria-current="page"]{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent)}
+  main{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+}
+
+/* dịch truyện bằng AI */
+.aisheet{position:fixed;z-index:47;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:40vh;overflow:auto;background:rgba(20,20,24,.94);color:#fff;border-radius:20px;border:1px solid rgba(255,255,255,.12);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);padding:0 16px 12px;font-size:15.5px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.aisheet[hidden]{display:none}
+.aihd{position:sticky;top:0;display:flex;justify-content:space-between;gap:10px;width:100%;padding:12px 0 6px;font-weight:700;font-size:13px;color:rgba(255,255,255,.72);background:rgba(20,20,24,.98);text-align:left}
+.aisheet p{margin:7px 0}
+.aisheet .s{display:block;font-size:12.5px;color:rgba(255,255,255,.5)}
+.aisheet .pn{margin-top:10px;font-size:12.5px;color:var(--accent);font-weight:700}
+.aisheet .er{color:#ff9d92}
+.aisheet.min .abody{display:none}
+@media (max-width:767px){
+  .rd:not(.noui) .aisheet{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+  .rbot{gap:6px}.rbot .ib{width:42px;height:42px}
+  .rbot .ib.ai{font-size:12px;font-weight:800}
+}
+@media (min-width:768px){
+  .aisheet{left:50%;right:auto;transform:translateX(-50%);width:min(760px,calc(100% - 220px));bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+}
+
+.aibar{display:flex;align-items:center;gap:10px;margin:4px 0 6px}
+.aipg{flex:1;height:5px;border-radius:9px;background:rgba(255,255,255,.14);overflow:hidden}
+.aipg i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.aitg{font-size:12.5px;font-weight:700;color:var(--accent);white-space:nowrap}
+.aisheet.full{max-height:70vh}
 </style>
 </head>
 <body>
@@ -152,6 +328,8 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   function drop(k){try{localStorage.removeItem(k)}catch(e){}}
 
   var lang=load('qt-lang','vi'),saver=load('qt-saver',false),progress=load('qt-prog',{});
+  var rdHide=true,spread=load('qt-spread',null),rtl=load('qt-rtl',false);
+  function spreadOn(){return spread===null?innerWidth>=900:!!spread}
   langSel.value=lang;
 
   /* ---------- dữ liệu người dùng: yêu thích, lịch sử, tài khoản ---------- */
@@ -251,7 +429,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
 
   /* ---------- giao diện chung ---------- */
   function ic(n){
-    var p={search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',home:'<path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>',back:'<path d="m15 5-7 7 7 7"/>',
+    var p={search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',home:'<path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>',back:'<path d="m15 5-7 7 7 7"/>',close:'<path d="M6 6l12 12M18 6 6 18"/>',saver:'<path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/>',
       grid:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
       heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>'}[n];
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
@@ -303,6 +481,8 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   function pageAlts(d){return (VIA?[d,wsrv(d)]:[wsrv(d)]).map(encodeURI).join(' ')}
   function pageUrl(d){return VIA?BASE+'/proxy?u='+encodeURIComponent(d):d}
   function showBanner(){var b=$('#rbanner');if(b)b.hidden=false}
+  document.addEventListener('load',function(e){var t=e.target;if(!t||t.tagName!=='IMG'||!t.classList.contains('rimg'))return;var r=t.naturalHeight/t.naturalWidth;t.classList.toggle('long',r>2.2);t.classList.toggle('span',r<0.9)},true);
+  document.addEventListener('click',function(e){var t=e.target;if(t&&t.classList&&t.classList.contains('rimg')){var r=$('#rd');if(r){r.classList.toggle('noui');rdHide=r.classList.contains('noui')}}});
   document.addEventListener('error',function(e){
     var t=e.target;if(!t||t.tagName!=='IMG')return;
     var list=(t.dataset.alt||'').split(' ').filter(Boolean);
@@ -359,7 +539,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   var tab='home',token=0,libTab='fav',authView=0;
   var TABS=[['home','Trang chủ','home'],['genres','Thể loại','grid'],['search','Tìm kiếm','search'],['library','Thư viện','heart'],['me','Tôi','user']];
   function setNav(){
-    navEl.innerHTML=TABS.map(function(n){return '<button data-go="'+n[0]+'"'+(n[0]===tab?' aria-current="page"':'')+'>'+ic(n[2])+n[1]+'</button>'}).join('');
+    navEl.innerHTML=TABS.map(function(n){return '<button data-go="'+n[0]+'"'+(n[0]===tab?' aria-current="page"':'')+' aria-label="'+n[1]+'" title="'+n[1]+'">'+ic(n[2])+'<span>'+n[1]+'</span></button>'}).join('');
   }
   var SECTIONS=[['Theo dõi nhiều nhất',{'order[followedCount]':'desc'}],['Mới cập nhật',{'order[latestUploadedChapter]':'desc'}],['Mới thêm',{'order[createdAt]':'desc'}]];
   function vHome(){
@@ -491,6 +671,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
         }else put(false,'Worker vẫn là bản cũ (HTTP '+r.status+'). Dán lại mã cloudflare-worker.js mới vào Worker và bấm Deploy.');
       }catch(e){put(false,'Không gọi được Worker: '+e.message)}
     }
+    if(VIA){try{var pj=await (await fetch(BASE+'/ping')).json();put(!!pj.ai,'Workers AI (dịch truyện): '+(pj.ai?'đã gắn':'chưa gắn. Vào Worker, Settings, Bindings, Add, Workers AI, tên biến AI, rồi Deploy.'))}catch(e){}}
     var m=null;
     try{var j2=await api('/manga',{limit:1,includes:['cover_art'],contentRating:RATING,'order[followedCount]':'desc'});m=norm(j2.data[0]);put(true,'API MangaDex chạy được.')}
     catch(e){put(false,'API MangaDex lỗi: '+e.message)}
@@ -565,11 +746,89 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
       var p=progress[mid]||{read:{}};p.chapter=cid;p.read=p.read||{};p.read[cid]=1;progress[mid]=p;save('qt-prog',progress);
       addHist(c.m,cid,chLabel(ch));
       var prev=idx>0?c.chapters[idx-1]:null,next=idx<c.chapters.length-1?c.chapters[idx+1]:null;
-      var o='<div class="ov rd" id="rd" role="dialog">'+bar(c.m.title+' · '+chLabel(ch),'<button class="tg" data-saver aria-pressed="'+(!!saver)+'">Tiết kiệm dữ liệu</button>')+'<div class="banner" id="rbanner" hidden>Ảnh chưa tải được. Vào tab Tôi, bấm Kiểm tra kết nối để biết lỗi ở đâu.</div><div class="pages">';
+      var o='<div class="ov rd'+(rtl?' rtl':'')+(rdHide?' noui':'')+'" id="rd" role="dialog">'+bar(c.m.title+' · '+chLabel(ch),'<button class="tg" data-ai aria-pressed="'+aiOn+'">Dịch AI</button><button class="tg padonly" data-spread aria-pressed="'+spreadOn()+'">2 trang</button><button class="tg padonly" data-rtl aria-pressed="'+(!!rtl)+'">Phải sang trái</button><button class="tg" data-saver aria-pressed="'+(!!saver)+'">Tiết kiệm dữ liệu</button>')+'<div class="banner" id="rbanner" hidden>Ảnh chưa tải được. Vào tab Tôi, bấm Kiểm tra kết nối để biết lỗi ở đâu.</div><div class="pages'+(spreadOn()?' two':'')+(rtl?' rtl':'')+'" id="pages">';
       files.forEach(function(f,i){var d=at.baseUrl+'/'+mode+'/'+at.chapter.hash+'/'+f;o+='<img class="rimg" src="'+esc(pageUrl(d))+'" data-alt="'+esc(pageAlts(d))+'" alt="Trang '+(i+1)+'" loading="lazy" referrerpolicy="no-referrer">'});
       o+='</div><div class="rfoot g"><button class="btn" '+(prev?'data-read="'+esc(mid)+'|'+esc(prev.id)+'"':'disabled')+'>Chương trước</button><button class="btn pri" '+(next?'data-read="'+esc(mid)+'|'+esc(next.id)+'"':'disabled')+'>Chương sau</button></div></div>';
-      ovEl.innerHTML=o;document.body.style.overflow='hidden';
+      var nb=function(x,cls,lab){return '<button class="ib '+cls+'" aria-label="'+lab+'" '+(x?'data-read="'+esc(mid)+'|'+esc(x.id)+'"':'disabled')+'>'+ic('back')+'</button>'};
+      o=o.replace(/<\/div><\/div>$/,'</div><div class="rbot">'+'<button class="ib" data-back aria-label="Quay lại">'+ic('close')+'</button>'+nb(prev,'pv','Chương trước')+'<div class="mid"><b>'+esc(chLabel(ch))+'</b><small>'+esc(c.m.title)+'</small></div>'+nb(next,'nx','Chương sau')+'<button class="ib ai" data-ai aria-pressed="'+aiOn+'" aria-label="Dịch AI sang tiếng Việt">Dịch</button><button class="ib" data-saver aria-pressed="'+(!!saver)+'" aria-label="Tiết kiệm dữ liệu">'+ic('saver')+'</button></div>'+nb(prev,'pv rarrow','Chương trước').replace('class="ib ','class="')+nb(next,'nx rarrow','Chương sau').replace('class="ib ','class="')+'</div>');
+      o=o.replace(/<\/div>$/,'<div class="aisheet" id="aisheet" hidden></div></div>');
+      ovEl.innerHTML=o;document.body.style.overflow='hidden';aiStart(cid);
     }catch(e){shell(bar('Lỗi')+'<div class="msg err g">'+esc(e.message)+'</div>')}
+  }
+
+
+  /* ---------- dịch truyện bằng AI ---------- */
+  var aiOn=load('qt-ai',false),aiCache=load('qt-tr',{}),aiSt=null,aiMin=false,aiFull=false;
+  function aiSaveCache(){var ks=Object.keys(aiCache);if(ks.length>400)ks.slice(0,ks.length-400).forEach(function(k){delete aiCache[k]});save('qt-tr',aiCache)}
+  function aiErr(c,st){
+    if(c==='no_ai')return 'Worker chưa bật Workers AI. Vào Cloudflare, mở Worker, chọn Settings, Bindings, Add, Workers AI, đặt tên biến là AI rồi Deploy.';
+    if(c==='quota')return 'Đã hết lượt AI miễn phí hôm nay. Lượt được làm mới lúc 7 giờ sáng (giờ Việt Nam).';
+    if(c==='forbidden')return 'Worker từ chối vì địa chỉ trang không khớp ALLOWED_ORIGIN.';
+    if(c==='bad_output')return 'AI trả về kết quả không đọc được, thử lại sau.';
+    return 'Dịch AI lỗi (HTTP '+st+').';
+  }
+  function aiLoaded(img){return new Promise(function(res){if(img.complete&&img.naturalWidth)return res();var d=false;function f(){if(!d){d=true;res()}}img.addEventListener('load',f,{once:true});img.addEventListener('error',f,{once:true});setTimeout(f,15000)})}
+  function aiShot(img){
+    return fetch(img.currentSrc||img.src).then(function(r){if(!r.ok)throw new Error('Không tải được ảnh trang ('+r.status+')');return r.blob()}).then(function(b){
+      return new Promise(function(res,rej){var u=URL.createObjectURL(b),im=new Image();im.onload=function(){URL.revokeObjectURL(u);res(im)};im.onerror=function(){URL.revokeObjectURL(u);rej(new Error('Không đọc được ảnh trang'))};im.src=u})
+    }).then(function(im){
+      var w=im.naturalWidth||400,h=im.naturalHeight||560,s=Math.min(1,1400/Math.max(w,h)),c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
+      var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+      return c.toDataURL('image/jpeg',0.72);
+    });
+  }
+  function aiCall(img){
+    return aiShot(img).then(function(d){return fetch(BASE+'/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({img:d})})}).then(function(r){
+      return r.json().catch(function(){return {}}).then(function(j){
+        if(!r.ok){var e=new Error(aiErr(j.error,r.status));e.fatal=(j.error==='no_ai'||j.error==='quota'||j.error==='forbidden');throw e}
+        return j.items||[];
+      });
+    });
+  }
+  function aiStart(cid){
+    if(aiSt&&aiSt.io)aiSt.io.disconnect();
+    var imgs=[].slice.call(document.querySelectorAll('#rd .rimg'));
+    aiSt={cid:cid,imgs:imgs,vis:{},busy:0,pending:{},fail:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',io:null};
+    if('IntersectionObserver' in window){
+      var st=aiSt;
+      st.io=new IntersectionObserver(function(es){es.forEach(function(e){var i=imgs.indexOf(e.target);if(e.isIntersecting)st.vis[i]=1;else delete st.vis[i]});aiRender();aiPump()},{root:$('#rd'),threshold:0.5});
+      imgs.forEach(function(im){st.io.observe(im)});
+    }
+    aiRender();aiPump();
+  }
+  function aiDone(st){var n=0;st.imgs.forEach(function(x,i){if(aiCache[st.cid+':'+i])n++});return n}
+  function aiRender(){
+    var el=$('#aisheet');if(!el)return;
+    if(!aiOn||!aiSt){el.hidden=true;return}
+    var st=aiSt,N=st.imgs.length,done=aiDone(st),idx=Object.keys(st.vis).map(Number).sort(function(a,b){return a-b});
+    if(aiFull){idx=[];for(var q=0;q<N;q++)idx.push(q)}else if(!idx.length)idx=[0];
+    var o='<button class="aihd" data-aimin><span>Bản dịch AI · '+(aiFull?'Cả chương':'Trang '+idx.map(function(i){return i+1}).join(', '))+'</span><span>Đã dịch '+done+'/'+N+' · '+(aiMin?'Mở ▴':'Thu ▾')+'</span></button><div class="abody">';
+    o+='<div class="aibar"><div class="aipg"><i style="width:'+(N?Math.round(done*100/N):0)+'%"></i></div><button class="aitg" data-aifull>'+(aiFull?'Chỉ trang đang xem':'Xem cả chương')+'</button></div>';
+    if(st.err)o+='<p class="er">'+esc(st.err)+'</p>';
+    else idx.forEach(function(i){
+      var k=st.cid+':'+i,it=aiCache[k];
+      if(idx.length>1)o+='<div class="pn">Trang '+(i+1)+'</div>';
+      if(it){o+=it.length?it.map(function(x){return '<p>'+esc(x.v)+(x.s?'<span class="s">'+esc(x.s)+'</span>':'')+'</p>'}).join(''):'<p><span class="s">Trang này không có chữ.</span></p>'}
+      else if(st.fail[i])o+='<p class="er">'+esc(st.fail[i])+'</p>';
+      else o+='<p><span class="s">'+(st.pending[i]?'Đang dịch...':'Đang chờ đến lượt...')+'</span></p>';
+    });
+    el.innerHTML=o+'</div>';el.classList.toggle('min',aiMin);el.classList.toggle('full',aiFull);el.hidden=false;
+  }
+  function aiPump(){
+    var st=aiSt;if(!aiOn||!st||st.err)return;
+    var N=st.imgs.length;if(!N||!document.body.contains(st.imgs[0]))return;
+    var ks=Object.keys(st.vis).map(Number),start=ks.length?Math.min.apply(null,ks):0;
+    while(st.busy<2){
+      var pick=-1;
+      for(var k=0;k<N;k++){var i=(start+k)%N,key=st.cid+':'+i;if(!aiCache[key]&&!st.fail[i]&&!st.pending[i]){pick=i;break}}
+      if(pick<0)break;
+      st.busy++;st.pending[pick]=1;
+      (function(i,key){
+        aiLoaded(st.imgs[i]).then(function(){return aiCall(st.imgs[i])}).then(function(items){aiCache[key]=items.slice(0,40);aiSaveCache()}).catch(function(e){if(e.fatal)st.err=e.message;else st.fail[i]=e.message||'Dịch AI lỗi'}).then(function(){delete st.pending[i];st.busy--;if(aiSt!==st)return;aiRender();aiPump()});
+      })(pick,st.cid+':'+pick);
+    }
+    aiRender();
   }
 
   /* ---------- điều hướng ---------- */
@@ -609,7 +868,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
   }
 
   /* ---------- sự kiện ---------- */
-  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
+  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-ai],[data-aimin],[data-aifull],[data-spread],[data-rtl],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
   document.addEventListener('click',function(e){
     var t=e.target.closest(SEL);
     if(!t||t.disabled)return;
@@ -621,6 +880,11 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:1100p
     if('pmore' in D){pagers[D.pmore]&&pagers[D.pmore].run(false);return}
     if('retry' in D){draw(true);return}
     if('desc' in D){var ds=$('#desc');ds.classList.toggle('open');t.textContent=ds.classList.contains('open')?'Thu gọn':'Xem thêm';return}
+    if('ai' in D){aiOn=!aiOn;save('qt-ai',aiOn);if(aiSt){aiSt.err=VIA?'':aiSt.err;aiSt.fail={};if(aiSt.err&&VIA)aiSt.err=''}document.querySelectorAll('[data-ai]').forEach(function(b){b.setAttribute('aria-pressed',aiOn)});aiRender();aiPump();return}
+    if('aifull' in D){aiFull=!aiFull;aiMin=false;aiRender();return}
+    if('aimin' in D){aiMin=!aiMin;aiRender();return}
+    if('spread' in D){spread=!spreadOn();save('qt-spread',spread);t.setAttribute('aria-pressed',spread);var pg=$('#pages');if(pg)pg.classList.toggle('two',spread);return}
+    if('rtl' in D){rtl=!rtl;save('qt-rtl',rtl);t.setAttribute('aria-pressed',rtl);var rdx=$('#rd');if(rdx)rdx.classList.toggle('rtl',rtl);var pg2=$('#pages');if(pg2)pg2.classList.toggle('rtl',rtl);return}
     if('saver' in D){saver=!saver;save('qt-saver',saver);var m2=location.hash.match(/^#r-([0-9a-f-]{36})-([0-9a-f-]{36})$/);if(m2)openReader(m2[1],m2[2]);return}
     if('tag' in D){var i=F.tags.indexOf(D.tag);if(i>-1)F.tags.splice(i,1);else F.tags.push(D.tag);drawTags();pagers.sres&&pagers.sres.run(true);return}
     if('tagmore' in D){tagsAll=!tagsAll;drawTags();return}
