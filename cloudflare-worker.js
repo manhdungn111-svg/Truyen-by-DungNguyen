@@ -176,52 +176,48 @@ async function account(req, env, u, cors) {
 /* ---------- dịch truyện bằng AI ---------- */
 const AI_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 const AI_PROMPT =
-  'Bạn là người dịch truyện tranh chuyên nghiệp. Hãy đọc mọi chữ trong ảnh trang truyện này (lời thoại, chữ trong khung, tiếng động) ' +
-  'theo đúng thứ tự đọc của trang, rồi dịch sang tiếng Việt tự nhiên, ngắn gọn, đúng giọng nhân vật. ' +
-  'Chỉ trả về MỘT mảng JSON, không thêm chữ nào khác, mỗi phần tử có dạng {"s":"nguyên văn","v":"bản dịch tiếng Việt"}. ' +
-  'Nếu trang không có chữ thì trả về [].';
+  'You are a professional manga translator. Read ALL the text in this comic page (speech bubbles, captions, narration, sound effects) in reading order, ' +
+  'and translate it into natural, concise Vietnamese that fits each character. ' +
+  'Reply with ONLY a JSON array, no markdown and no explanation. Each item must look like {"s":"original text","v":"Vietnamese translation"}. ' +
+  'If the page has no text, reply with [].';
 
-function parseItems(text) {
-  const a = text.indexOf('['), b = text.lastIndexOf(']');
-  if (a < 0 || b <= a) return null;
-  try {
-    const arr = JSON.parse(text.slice(a, b + 1));
-    if (!Array.isArray(arr)) return null;
-    return arr
-      .filter((x) => x && typeof x === 'object')
-      .slice(0, 40)
-      .map((x) => ({ s: String(x.s || x.src || '').slice(0, 300), v: String(x.v || x.vi || '').slice(0, 400) }))
-      .filter((x) => x.v);
-  } catch (e) { return null; }
+function cleanItem(x) {
+  return { s: String((x && (x.s || x.src)) || '').slice(0, 300), v: String((x && (x.v || x.vi)) || '').slice(0, 400) };
 }
 
-function b64bytes(img) {
-  const bin = atob(img.slice(img.indexOf(',') + 1));
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return [...arr];
+function parseItems(raw) {
+  const text = String(raw || '').replace(/```(?:json)?/gi, '').trim();
+  if (!text) return [];
+  // 1) mảng JSON đầy đủ
+  const a = text.indexOf('['), b = text.lastIndexOf(']');
+  if (a >= 0 && b > a) {
+    try {
+      const arr = JSON.parse(text.slice(a, b + 1));
+      if (Array.isArray(arr)) return arr.filter((x) => x && typeof x === 'object').slice(0, 40).map(cleanItem).filter((x) => x.v);
+    } catch (e) { /* thử cách khác */ }
+  }
+  // 2) nhặt từng đối tượng {..} (kể cả khi mảng bị cắt dở)
+  const objs = text.match(/\{[^{}]*\}/g) || [];
+  const got = [];
+  for (const o of objs) {
+    try { const x = cleanItem(JSON.parse(o)); if (x.v) got.push(x); } catch (e) { /* bỏ qua */ }
+  }
+  if (got.length) return got.slice(0, 40);
+  // 3) văn bản thường: mỗi dòng là một câu
+  if (text.length > 1500) return null;
+  const lines = text.split(/\n+/).map((l) => l.replace(/^[\s\-*\d.)]+/, '').trim()).filter((l) => l.length > 1);
+  return lines.length ? lines.slice(0, 20).map((l) => ({ s: '', v: l.slice(0, 400) })) : [];
 }
 
 async function runModel(env, img) {
-  try {
-    return await env.AI.run(AI_MODEL, {
-      messages: [{ role: 'user', content: [
-        { type: 'text', text: AI_PROMPT },
-        { type: 'image_url', image_url: { url: img } },
-      ] }],
-      max_tokens: 1200,
-      temperature: 0.2,
-    });
-  } catch (e) {
-    if (/agree|license|5016|quota|neuron|4006|exceeded/i.test(String(e && e.message))) throw e;
-    // Định dạng cũ: prompt + mảng byte của ảnh.
-    try {
-      return await env.AI.run(AI_MODEL, { prompt: AI_PROMPT, image: b64bytes(img), max_tokens: 1200, temperature: 0.2 });
-    } catch (e2) {
-      e2.first = String((e && e.message) || e);
-      throw e2;
-    }
-  }
+  return env.AI.run(AI_MODEL, {
+    messages: [{ role: 'user', content: [
+      { type: 'text', text: AI_PROMPT },
+      { type: 'image_url', image_url: { url: img } },
+    ] }],
+    max_tokens: 1400,
+    temperature: 0.2,
+  });
 }
 
 async function translate(req, env, cors) {
@@ -252,6 +248,6 @@ async function translate(req, env, cors) {
   } catch (e) {
     const m = String((e && e.message) || e);
     if (/quota|limit|neuron|4006|exceeded/i.test(m)) return json({ error: 'quota' }, 429, cors);
-    return json({ error: 'ai_failed', detail: m.slice(0, 220), first: String((e && e.first) || '').slice(0, 220) }, 502, cors);
+    return json({ error: 'ai_failed', detail: m.slice(0, 220) }, 502, cors);
   }
 }

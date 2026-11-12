@@ -773,14 +773,14 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     return fetch(img.currentSrc||img.src).then(function(r){if(!r.ok)throw new Error('Không tải được ảnh trang ('+r.status+')');return r.blob()}).then(function(b){
       return new Promise(function(res,rej){var u=URL.createObjectURL(b),im=new Image();im.onload=function(){URL.revokeObjectURL(u);res(im)};im.onerror=function(){URL.revokeObjectURL(u);rej(new Error('Không đọc được ảnh trang'))};im.src=u})
     }).then(function(im){
-      var w=im.naturalWidth||400,h=im.naturalHeight||560,s=Math.min(1,1400/Math.max(w,h)),c=document.createElement('canvas');
+      var w=im.naturalWidth||400,h=im.naturalHeight||560,s=Math.min(1,1100/Math.max(w,h)),c=document.createElement('canvas');
       c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
       var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
-      return c.toDataURL('image/jpeg',0.72);
+      return c.toDataURL('image/jpeg',0.68);
     });
   }
   function aiCall(img){
-    return aiShot(img).then(function(d){return fetch(BASE+'/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({img:d})})}).then(function(r){
+    return aiShot(img).then(function(d){return fetch(BASE+'/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({img:d})}).catch(function(e){throw new Error('Không gửi được ảnh tới Worker ('+(e&&e.message||'mất kết nối')+'). Có thể mạng chập chờn hoặc Worker quá tải.')})}).then(function(r){
       return r.json().catch(function(){return {}}).then(function(j){
         if(!r.ok){var e=new Error(aiErr(j.error,r.status,j.detail,j.first));e.fatal=(j.error==='no_ai'||j.error==='quota'||j.error==='forbidden');throw e}
         return j.items||[];
@@ -790,7 +790,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   function aiStart(cid){
     if(aiSt&&aiSt.io)aiSt.io.disconnect();
     var imgs=[].slice.call(document.querySelectorAll('#rd .rimg'));
-    aiSt={cid:cid,imgs:imgs,vis:{},busy:0,pending:{},fail:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',io:null};
+    aiSt={cid:cid,imgs:imgs,vis:{},busy:0,pending:{},fail:{},tries:{},hold:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',io:null};
     if('IntersectionObserver' in window){
       var st=aiSt;
       st.io=new IntersectionObserver(function(es){es.forEach(function(e){var i=imgs.indexOf(e.target);if(e.isIntersecting)st.vis[i]=1;else delete st.vis[i]});aiRender();aiPump()},{root:$('#rd'),threshold:0.5});
@@ -811,7 +811,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
       var k=st.cid+':'+i,it=aiCache[k];
       if(idx.length>1)o+='<div class="pn">Trang '+(i+1)+'</div>';
       if(it){o+=it.length?it.map(function(x){return '<p>'+esc(x.v)+(x.s?'<span class="s">'+esc(x.s)+'</span>':'')+'</p>'}).join(''):'<p><span class="s">Trang này không có chữ.</span></p>'}
-      else if(st.fail[i])o+='<p class="er">'+esc(st.fail[i])+'</p>';
+      else if(st.fail[i])o+='<p class="er">'+esc(st.fail[i])+' <button class="aitg" data-airetry>Thử lại</button></p>';
       else o+='<p><span class="s">'+(st.pending[i]?'Đang dịch...':'Đang chờ đến lượt...')+'</span></p>';
     });
     el.innerHTML=o+'</div>';el.classList.toggle('min',aiMin);el.classList.toggle('full',aiFull);el.hidden=false;
@@ -822,11 +822,11 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     var ks=Object.keys(st.vis).map(Number),start=ks.length?Math.min.apply(null,ks):0;
     while(st.busy<2){
       var pick=-1;
-      for(var k=0;k<N;k++){var i=(start+k)%N,key=st.cid+':'+i;if(!aiCache[key]&&!st.fail[i]&&!st.pending[i]){pick=i;break}}
+      for(var k=0;k<N;k++){var i=(start+k)%N,key=st.cid+':'+i;if(!aiCache[key]&&!st.fail[i]&&!st.pending[i]&&!st.hold[i]){pick=i;break}}
       if(pick<0)break;
       st.busy++;st.pending[pick]=1;
       (function(i,key){
-        aiLoaded(st.imgs[i]).then(function(){return aiCall(st.imgs[i])}).then(function(items){aiCache[key]=items.slice(0,40);aiSaveCache()}).catch(function(e){if(e.fatal)st.err=e.message;else st.fail[i]=e.message||'Dịch AI lỗi'}).then(function(){delete st.pending[i];st.busy--;if(aiSt!==st)return;aiRender();aiPump()});
+        aiLoaded(st.imgs[i]).then(function(){return aiCall(st.imgs[i])}).then(function(items){aiCache[key]=items.slice(0,40);aiSaveCache()}).catch(function(e){if(e.fatal)st.err=e.message;else{st.tries[i]=(st.tries[i]||0)+1;if(st.tries[i]>=3)st.fail[i]=e.message||'Dịch AI lỗi';else{st.hold[i]=1;setTimeout(function(){delete st.hold[i];if(aiSt===st)aiPump()},3000)}}}).then(function(){delete st.pending[i];st.busy--;if(aiSt!==st)return;aiRender();aiPump()});
       })(pick,st.cid+':'+pick);
     }
     aiRender();
@@ -869,7 +869,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- sự kiện ---------- */
-  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-ai],[data-aimin],[data-aifull],[data-spread],[data-rtl],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
+  var SEL='[data-go],[data-open],[data-read],[data-back],[data-pmore],[data-retry],[data-desc],[data-saver],[data-ai],[data-airetry],[data-aimin],[data-aifull],[data-spread],[data-rtl],[data-tag],[data-tagmore],[data-tagclear],[data-genre],[data-fav],[data-lib],[data-hdel],[data-hclear],[data-authmode],[data-logout],[data-sync],[data-diag],[data-theme]';
   document.addEventListener('click',function(e){
     var t=e.target.closest(SEL);
     if(!t||t.disabled)return;
@@ -882,6 +882,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     if('retry' in D){draw(true);return}
     if('desc' in D){var ds=$('#desc');ds.classList.toggle('open');t.textContent=ds.classList.contains('open')?'Thu gọn':'Xem thêm';return}
     if('ai' in D){aiOn=!aiOn;save('qt-ai',aiOn);if(aiSt){aiSt.err=VIA?'':aiSt.err;aiSt.fail={};if(aiSt.err&&VIA)aiSt.err=''}document.querySelectorAll('[data-ai]').forEach(function(b){b.setAttribute('aria-pressed',aiOn)});aiRender();aiPump();return}
+    if('airetry' in D){if(aiSt){aiSt.fail={};aiSt.tries={};aiSt.hold={};aiRender();aiPump()}return}
     if('aifull' in D){aiFull=!aiFull;aiMin=false;aiRender();return}
     if('aimin' in D){aiMin=!aiMin;aiRender();return}
     if('spread' in D){spread=!spreadOn();save('qt-spread',spread);t.setAttribute('aria-pressed',spread);var pg=$('#pages');if(pg)pg.classList.toggle('two',spread);return}
