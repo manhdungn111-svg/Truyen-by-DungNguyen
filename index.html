@@ -758,9 +758,9 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
 
 
   /* ---------- dịch truyện bằng AI: nhận dạng chữ, dịch, rồi vẽ chữ Việt vào ảnh ---------- */
-  var aiOn=load('qt-ai',false),aiCache=load('qt-tr2',{}),aiSt=null,aiMin=false,aiFull=false,aiOrig=false;
+  var aiOn=load('qt-ai',false),aiCache=load('qt-tr3',{}),aiSt=null,aiMin=false,aiFull=false,aiOrig=false;
   var OCR_LANG={en:'eng',ja:'jpn',ko:'kor',zh:'chi_sim','zh-hk':'chi_tra',es:'spa',fr:'fra',de:'deu','pt-br':'por',pt:'por',id:'ind',ru:'rus',it:'ita',tr:'tur',pl:'pol'};
-  function aiSaveCache(){var ks=Object.keys(aiCache);if(ks.length>300)ks.slice(0,ks.length-300).forEach(function(k){delete aiCache[k]});save('qt-tr2',aiCache)}
+  function aiSaveCache(){var ks=Object.keys(aiCache);if(ks.length>300)ks.slice(0,ks.length-300).forEach(function(k){delete aiCache[k]});save('qt-tr3',aiCache)}
   function aiErr(c,st,d){
     if(c==='no_ai')return 'Worker chưa bật Workers AI. Vào Cloudflare, mở Worker, chọn Settings, Bindings, Add, Workers AI, đặt tên biến là AI rồi Deploy.';
     if(c==='quota')return 'Đã hết lượt AI miễn phí hôm nay. Lượt được làm mới lúc 7 giờ sáng (giờ Việt Nam).';
@@ -779,14 +779,44 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   }
   function ocrWorker(lang){
     if(ocrW[lang])return ocrW[lang];
-    ocrW[lang]=ocrLoad().then(function(){return window.Tesseract.createWorker(lang,1,(window.QT_OCR&&window.QT_OCR.opts)||{})}).catch(function(e){delete ocrW[lang];throw e});
+    ocrW[lang]=ocrLoad().then(function(){return window.Tesseract.createWorker(lang,1,(window.QT_OCR&&window.QT_OCR.opts)||{})}).then(function(w){return Promise.resolve(w.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'})).then(function(){return w})}).catch(function(e){delete ocrW[lang];throw e});
     return ocrW[lang];
   }
+  function ocrPrep(c){
+    var o=document.createElement('canvas');o.width=c.width;o.height=c.height;
+    var x=o.getContext('2d');x.drawImage(c,0,0);
+    var im=x.getImageData(0,0,o.width,o.height),d=im.data;
+    for(var i=0;i<d.length;i+=4){var g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];g=(g-128)*1.5+128;g=g<0?0:g>255?255:g;d[i]=d[i+1]=d[i+2]=g}
+    x.putImageData(im,0,0);return o;
+  }
+  var ocrCfg={};
   function ocrPage(canvas,lang){
     if(window.QT_OCR_MOCK)return Promise.resolve(window.QT_OCR_MOCK(canvas));
-    return ocrWorker(lang).then(function(w){return w.recognize(canvas)}).then(function(r){
-      return (r.data.paragraphs||[]).map(function(p){return {t:p.text,c:p.confidence,b:[p.bbox.x0,p.bbox.y0,p.bbox.x1,p.bbox.y1]}});
+    var prep=ocrPrep(canvas);
+    return ocrWorker(lang).then(function(w){var pre=ocrCfg[lang]?Promise.resolve():w.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'}).then(function(){ocrCfg[lang]=1});return pre.then(function(){return w.recognize(prep)})}).then(function(r){
+      var ls=r.data.lines&&r.data.lines.length?r.data.lines:(r.data.paragraphs||[]);
+      return ls.map(function(p){return {t:p.text,c:p.confidence,b:[p.bbox.x0,p.bbox.y0,p.bbox.x1,p.bbox.y1]}});
     });
+  }
+  /* gom các dòng chữ gần nhau thành từng bong bóng */
+  function groupLines(L){
+    var g=L.map(function(l){return {b:l.b.slice(),t:[l.t],c:[l.c],h:l.b[3]-l.b[1]}}),moved=true;
+    function near(a,b){
+      var h=Math.max(a.h,b.h),ox=Math.min(a.b[2],b.b[2])-Math.max(a.b[0],b.b[0]),mw=Math.min(a.b[2]-a.b[0],b.b[2]-b.b[0]);
+      var gap=Math.max(a.b[1],b.b[1])-Math.min(a.b[3],b.b[3]);
+      return gap<h*1.1&&(ox>mw*0.25||Math.abs((a.b[0]+a.b[2])/2-(b.b[0]+b.b[2])/2)<h*3);
+    }
+    while(moved){
+      moved=false;
+      outer:for(var i=0;i<g.length;i++)for(var j=i+1;j<g.length;j++){
+        if(near(g[i],g[j])){
+          var A=g[i],B=g[j],first=A.b[1]<=B.b[1]?A:B,second=first===A?B:A;
+          g[i]={b:[Math.min(A.b[0],B.b[0]),Math.min(A.b[1],B.b[1]),Math.max(A.b[2],B.b[2]),Math.max(A.b[3],B.b[3])],t:first.t.concat(second.t),c:first.c.concat(second.c),h:Math.max(A.h,B.h)};
+          g.splice(j,1);moved=true;break outer;
+        }
+      }
+    }
+    return g.map(function(x){return {t:x.t.join(' '),c:x.c.reduce(function(a,b){return a+b},0)/x.c.length,b:x.b}});
   }
   function aiBase(img){
     if(!img.dataset.orig)img.dataset.orig=img.currentSrc||img.src;
@@ -799,16 +829,16 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     });
   }
   function ringColor(ctx,b,W,H){
-    var x0=Math.max(0,b[0]-4),y0=Math.max(0,b[1]-4),x1=Math.min(W,b[2]+4),y1=Math.min(H,b[3]+4),r=0,g=0,bl=0,n=0;
+    var x0=Math.max(0,b[0]-4),y0=Math.max(0,b[1]-4),x1=Math.min(W,b[2]+4),y1=Math.min(H,b[3]+4),r=0,g=0,bl=0,n=0,sq=0,sm=0;
     [[x0,y0,x1-x0,2],[x0,y1-2,x1-x0,2],[x0,y0,2,y1-y0],[x1-2,y0,2,y1-y0]].forEach(function(q){
       if(q[2]<1||q[3]<1)return;
       var d=ctx.getImageData(q[0],q[1],q[2],q[3]).data;
-      for(var i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];bl+=d[i+2];n++}
+      for(var i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];bl+=d[i+2];n++;var lv=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];sm+=lv;sq+=lv*lv}
     });
-    if(!n)return {bg:'#ffffff',fg:'#111111'};
+    if(!n)return {bg:'#ffffff',fg:'#111111',sd:0};
     r=Math.round(r/n);g=Math.round(g/n);bl=Math.round(bl/n);
-    var lum=(0.299*r+0.587*g+0.114*bl)/255;
-    return {bg:'rgb('+r+','+g+','+bl+')',fg:lum>0.55?'#111111':'#ffffff'};
+    var lum=(0.299*r+0.587*g+0.114*bl)/255,mean=sm/n,sd=Math.sqrt(Math.max(0,sq/n-mean*mean));
+    return {bg:'rgb('+r+','+g+','+bl+')',fg:lum>0.55?'#111111':'#ffffff',sd:sd};
   }
   function aiTranslateTexts(texts,from){
     return fetch(BASE+'/translate-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texts:texts,from:from})}).catch(function(e){throw new Error('Không kết nối được Worker ('+(e&&e.message||'mất kết nối')+').')}).then(function(r){
@@ -818,18 +848,27 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
       });
     });
   }
-  function aiExtract(base,src){
+  function aiExtract(base,src,dbg){
     var W=base.width,H=base.height,ctx=base.getContext('2d');
-    return ocrPage(base,OCR_LANG[src]||'eng').then(function(ps){
-      var L=[];
-      (ps||[]).forEach(function(p){
-        var t=String(p.t||'').replace(/\s+/g,' ').trim(),b=p.b;
-        if(!b||p.c<45||(b[2]-b[0])<16||(b[3]-b[1])<10)return;
+    return ocrPage(base,OCR_LANG[src]||'eng').then(function(ls){
+      dbg.raw=(ls||[]).length;
+      var good=(ls||[]).filter(function(p){
+        var t=String(p.t||'').replace(/\s+/g,' ').trim(),b=p.b;p.t=t;
+        if(!b||p.c<30||(b[3]-b[1])<8||(b[3]-b[1])>H*0.2)return false;
         var letters=(t.match(/[\p{L}]/gu)||[]).length;
-        if(letters<3||letters/Math.max(1,t.length)<0.5)return;
-        var col=ringColor(ctx,b,W,H);
-        L.push({s:t.slice(0,300),b:b.map(Math.round),bg:col.bg,fg:col.fg});
+        return letters>=2&&letters/Math.max(1,t.length)>=0.6;
       });
+      dbg.lines=good.length;
+      var L=[];
+      groupLines(good).forEach(function(p){
+        var t=p.t.replace(/\s+/g,' ').trim(),b=p.b.map(Math.round);
+        var letters=(t.match(/[\p{L}]/gu)||[]).length;
+        if(letters<3||p.c<35)return;
+        var col=ringColor(ctx,b,W,H);
+        if(col.sd>70){dbg.art=(dbg.art||0)+1;return}
+        L.push({s:t.slice(0,300),b:b,bg:col.bg,fg:col.fg});
+      });
+      dbg.boxes=L.length;
       if(!L.length)return [];
       return aiTranslateTexts(L.map(function(x){return x.s}),src).then(function(vs){
         var out=[];
@@ -880,8 +919,8 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   function aiPage(st,i){
     var img=st.imgs[i],key=st.cid+':'+i;
     return aiBase(img).then(function(base){
-      var cached=aiCache[key];
-      var p=cached?Promise.resolve(cached):aiExtract(base,st.src).then(function(items){aiCache[key]=items;aiSaveCache();return items});
+      var cached=aiCache[key],dbg={};st.dbg[i]=dbg;
+      var p=cached?Promise.resolve(cached):aiExtract(base,st.src,dbg).then(function(items){if(items.length){aiCache[key]=items;aiSaveCache()}return items});
       return p.then(function(items){
         if(!items.length)return;
         return bake(base,items).then(function(b){if(aiSt===st)aiShow(img,b)});
@@ -891,7 +930,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   function aiStart(cid,src){
     if(aiSt&&aiSt.io)aiSt.io.disconnect();
     var imgs=[].slice.call(document.querySelectorAll('#rd .rimg'));
-    aiSt={cid:cid,src:src||'en',imgs:imgs,vis:{},busy:0,pending:{},baked:{},fail:{},tries:{},hold:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',note:'',io:null};
+    aiSt={cid:cid,src:src||'en',imgs:imgs,vis:{},busy:0,pending:{},baked:{},fail:{},tries:{},hold:{},dbg:{},err:VIA?'':'Cần dùng Cloudflare Worker để dịch AI.',note:'',io:null};
     if(aiSt.src==='vi')aiSt.note='Chương này đã là tiếng Việt, không cần dịch.';
     if('IntersectionObserver' in window){
       var st=aiSt;
@@ -913,7 +952,7 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
     else idx.forEach(function(i){
       var k=st.cid+':'+i,it=aiCache[k];
       if(idx.length>1)o+='<div class="pn">Trang '+(i+1)+'</div>';
-      if(it&&st.baked[i]){o+=it.length?it.map(function(x){return '<p>'+esc(x.v)+(x.s?'<span class="s">'+esc(x.s)+'</span>':'')+'</p>'}).join(''):'<p><span class="s">Không thấy chữ để dịch ở trang này.</span></p>'}
+      if(it&&st.baked[i]){o+=it.length?it.map(function(x){return '<p>'+esc(x.v)+(x.s?'<span class="s">'+esc(x.s)+'</span>':'')+'</p>'}).join(''):'<p><span class="s">Không thấy chữ để dịch ở trang này.'+(st.dbg[i]?' (đọc thô '+(st.dbg[i].raw||0)+' dòng, giữ '+(st.dbg[i].lines||0)+', bong bóng '+(st.dbg[i].boxes||0)+(st.dbg[i].art?', bỏ '+st.dbg[i].art+' vùng nền tranh':'')+')':'')+'</span></p>'}
       else if(st.fail[i])o+='<p class="er">'+esc(st.fail[i])+' <button class="aitg" data-airetry>Thử lại</button></p>';
       else o+='<p><span class="s">'+(st.pending[i]?'Đang nhận dạng và dịch...':'Đang chờ đến lượt...')+'</span></p>';
     });
